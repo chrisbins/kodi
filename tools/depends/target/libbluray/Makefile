@@ -1,7 +1,8 @@
 include ../../Makefile.include LIBBLURAY-VERSION ../../download-files.include
 DEPS = ../../Makefile.include LIBBLURAY-VERSION Makefile ../../download-files.include \
                                   001-darwinembed_DiskArbitration-revert.patch \
-                                  tvos.patch
+                                  tvos.patch \
+                                  android-support.patch
 
 # configuration settings
 CONFIGURE=./configure --prefix=$(PREFIX) \
@@ -23,6 +24,9 @@ ifeq ($(OS),darwin_embedded)
 endif
 ifeq ($(TARGET_PLATFORM),appletvos)
 	cd $(PLATFORM); patch -p1 -i ../tvos.patch
+endif
+ifeq ($(TARGET_PLATFORM),android)
+	cd $(PLATFORM); patch -p1 -i ../android-support.patch
 endif
 	cd $(PLATFORM); ./bootstrap
 	cd $(PLATFORM); $(CONFIGURE)
