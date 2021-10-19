@@ -56,6 +56,7 @@ extern "C"
 
 extern "C" {
 #include <libavutil/dict.h>
+#include <libavutil/dovi_meta.h>
 #include <libavutil/opt.h>
 }
 
@@ -1710,6 +1711,30 @@ CDemuxStream* CDVDDemuxFFmpeg::AddStream(int streamIdx)
               *reinterpret_cast<AVContentLightMetadata*>(side_data));
         }
 
+        // Dolby Vision track side data present
+        side_data = av_stream_get_side_data(pStream, AV_PKT_DATA_DOVI_CONF, &size);
+        if (side_data && size)
+		{
+		  // For use later with Matroska
+          AVDOVIDecoderConfigurationRecord *dovi = reinterpret_cast<AVDOVIDecoderConfigurationRecord*>(side_data);
+
+		  if (m_bMatroska)
+		  {
+			if (dovi->dv_profile > 7)
+			  pStream->codecpar->codec_tag = MKBETAG('d', 'v', 'v', 'C');
+			else
+			  pStream->codecpar->codec_tag = MKBETAG('d', 'v', 'c', 'C');
+		  }
+		  else if (pStream->codecpar->codec_id == AV_CODEC_ID_HEVC &&
+				   pStream->codecpar->codec_tag != MKTAG('d', 'v', 'h', 'e') &&
+				   pStream->codecpar->codec_tag != MKTAG('d', 'v', 'h', '1'))
+		  {
+			// Try giving the hint to decode as Dolby Vision anyways, as the side data is present
+			pStream->codecpar->codec_tag = MKTAG('d', 'v', 'h', 'e');
+		  }
+		}
+
+
         AVDictionaryEntry* rtag = av_dict_get(pStream->metadata, "rotate", NULL, 0);
         if (rtag)
           st->iOrientation = atoi(rtag->value);
@@ -1721,7 +1746,6 @@ CDemuxStream* CDVDDemuxFFmpeg::AddStream(int streamIdx)
           stereoMode = GetStereoModeFromMetadata(m_pFormatContext->metadata);
         if (!stereoMode.empty())
           st->stereo_mode = stereoMode;
-
 
         if (m_pInput->IsStreamType(DVDSTREAM_TYPE_DVD))
         {
